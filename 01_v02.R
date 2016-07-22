@@ -12,7 +12,7 @@ library(rgeos)
 library(sp)
 library(doParallel)
 
-base_folder = 'D:/dat/trip_data'
+base_folder = 'D:/dat/'
 to_load = list.files(path = base_folder, pattern = '*.csv')
 
 
@@ -20,8 +20,8 @@ to_load = list.files(path = base_folder, pattern = '*.csv')
 # input = "D:/dat/trip_data_8.csv/trip_data_1.csv"
 # dat = fread(input, header = TRUE, verbose = TRUE, drop = c(1,2,3,4,5),showProgress=TRUE)
 
-files_n_load = 3:length(to_load)
-#files_n_load = 1:1
+#files_n_load = 3:length(to_load)
+files_n_load = 1:1
 
 counties<-readOGR("C:/Users/tsk/Downloads/nybb_16b/nybb.shp", layer="nybb")
 counties = counties[counties$BoroName == 'Brooklyn' | counties$BoroName == 'Manhattan',]
