@@ -34,10 +34,6 @@ map<-readOGR("test_shp", layer="nybb")
 plot(map, axes=TRUE)
 summary(map)
 
-# map<-readOGR("C:/Users/tsk/Downloads/nybb_16b/nybb.shp", layer="nybb")
-# map_wgs84 <- spTransform(map, CRS("+proj=longlat +datum=WGS84"))
-# plot(map_wgs84, axes=TRUE)
-
 
 
 
