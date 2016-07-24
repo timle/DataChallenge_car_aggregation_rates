@@ -117,3 +117,7 @@ BB[1:10]
 #   geom_polygon(data=map_wgs84, aes(x=long, y=lat, group=group)) + 
 #   geom_point(data=t, aes(x=pickup_longitude, y=pickup_latitude), color="red")
 
+# http://www.r-bloggers.com/5-ways-to-do-2d-histograms-in-r/
+
+# distances between all points. how fast is it?
+# http://www.inside-r.org/packages/cran/raster/docs/pointDistance
