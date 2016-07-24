@@ -3,63 +3,57 @@ library("RSQLite")
 library("data.table")
 library("fasttime")
 
+
+return_sql_as_dt <- function(drv, db_name){
+  # given db driver and db name, returns data from sql table as DT
+  con <- dbConnect(drv, dbname = db_name)
+  # load and covert tables to r
+  alltables = dbListTables(con)
+  # load and merge all tables
+  tbl_list = alltables
+  a = data.table()
+  for (lbl in tbl_list){
+    print(lbl)
+    r = data.table(dbGetQuery(con,paste('select * from',lbl) ))
+    a = rbind(a, r)
+  }
+  # conversions back into r
+  # date
+  a$pickup_datetime = as.POSIXct(a$pickup_datetime, origin="1970-01-01")
+  #check for dropoff_datetime...
+  # convert if present
+  # factors
+  a$passenger_count = as.factor(a$passenger_count)
+  a$pu_borough = as.factor(a$pu_borough)
+  a$do_borough = as.factor(a$do_borough)
+  dbDisconnect(con)
+  return(a)
+}
+
+
 drv <- dbDriver("SQLite")
 
-# mnht 2 mnht trips
-con <- dbConnect(drv, dbname = "MM.db")
-dbDisconnect(con)
+# mnht 2 mnht trips, 2013
+dbname = "MM.db"
 
+# Brooklyn 2 Brooklyn trips, 2013
+dbname = "BB2.db"
 
-# Brooklyn 2 Brooklyn trips
-con <- dbConnect(drv, dbname = "BB2.db")
-dbDisconnect(con)
-
-#memory.size(TRUE)
+# Brooklyn 2 mnhtn trips, 2013
+db_name = "BM.db"
 
 
 # BM
-con <- dbConnect(drv, dbname = "BM.db")
-# load and covert tables to r
-alltables = dbListTables(con)
-# load and merge all tables
-tbl_list = alltables
-a = data.table()
-for (lbl in tbl_list){
-  print(lbl)
-  r = data.table(dbGetQuery(con,paste('select * from',lbl) ))
-  a = rbind(a, r)
-}
-# conversions back into r
-# date
-a$pickup_datetime = as.POSIXct(a$pickup_datetime, origin="1970-01-01")
-# factors
-a$passenger_count = as.factor(a$passenger_count)
-a$pu_borough = as.factor(a$pu_borough)
-a$do_borough = as.factor(a$do_borough)
-BM = a
-dbDisconnect(con)
+BM = return_sql_as_dt(drv,  "BM.db")
 
 # BB
-con <- dbConnect(drv, dbname = "BB2.db")
-# load and covert tables to r
-alltables = dbListTables(con)
-# load and merge all tables
-tbl_list = alltables
-a = data.table()
-for (lbl in tbl_list){
-  print(lbl)
-  r = data.table(dbGetQuery(con,paste('select * from',lbl) ))
-  a = rbind(a, r)
-}
-# conversions back into r
-# date
-a$pickup_datetime = as.POSIXct(a$pickup_datetime, origin="1970-01-01")
-# factors
-a$passenger_count = as.factor(a$passenger_count)
-a$pu_borough = as.factor(a$pu_borough)
-a$do_borough = as.factor(a$do_borough)
-BB = a
-dbDisconnect(con)
+BB = return_sql_as_dt(drv,  "BB2.db")
+
+# MM
+MM = return_sql_as_dt(drv,  "MM.db")
+
+
+
 
 
 r =   sample(1:dim(BB)[1], 100)
