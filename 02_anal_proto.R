@@ -56,6 +56,44 @@ MM = return_sql_as_dt(drv,  "MM.db")
 
 
 
+# binnings?
+
+
+
+
+
+
+library(ash)
+library(pracma)
+
+
+
+
+dat = as.matrix(BM[, c('pickup_longitude','pickup_latitude'), with=FALSE])
+
+x <- c(1,1,1,5,5,10)
+y <- c(2,3,4,5,5,6)
+e <- seq(0, 12, by = 1)
+xx = histc(x,e) 
+yy = histc(y,e) 
+
+t = apply(cbind(xx$bin, yy$bin),1, function(x) sprintf('%i_%i',x[1],x[2]))
+
+
+# verify
+# ab <- matrix( c(0,0,12,12), 2, 2) # interval [-5,5) x [-5,5)
+# bins <- bin2(cbind(x,y), ab, c(12,12)) # bin counts,ab,nskip
+
+      
+
+#x <- matrix( rnorm(200), 100 , 2) # bivariate normal n=100
+ab <- matrix( c(-5,-5,5,5), 2, 2) # interval [-5,5) x [-5,5)
+nbin <- c( 10, 10) # 400 bins
+bins <- bin2(dat, , nbin) # bin counts,ab,nskip
+
+
+
+
 r =   sample(1:dim(BB)[1], 100)
 plot.new()
 
