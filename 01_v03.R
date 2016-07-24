@@ -12,7 +12,8 @@ library(rgeos)
 library(sp)
 library(doParallel)
 
-base_folder = 'D:/dat/'
+#base_folder = 'D:/dat/'
+base_folder = 'C:/Users/tsk/Documents/2015_data/'
 to_load = list.files(path = base_folder, pattern = '*.csv')
 
 
@@ -20,8 +21,9 @@ to_load = list.files(path = base_folder, pattern = '*.csv')
 # input = "D:/dat/trip_data_8.csv/trip_data_1.csv"
 # dat = fread(input, header = TRUE, verbose = TRUE, drop = c(1,2,3,4,5),showProgress=TRUE)
 
-#files_n_load = 3:length(to_load)
-files_n_load = 1:1
+files_n_load = 14:length(to_load)
+files_n_load = 1:12
+#files_n_load = 1:1
 
 counties<-readOGR("C:/Users/tsk/Downloads/nybb_16b/nybb.shp", layer="nybb")
 counties = counties[counties$BoroName == 'Brooklyn' | counties$BoroName == 'Manhattan',]
@@ -37,7 +39,7 @@ summary(map)
 
 
 
-cl <- makeCluster(4)
+cl <- makeCluster(2)
 registerDoParallel(cl)
 
 l = data.table()
@@ -47,13 +49,31 @@ for (i in files_n_load){
   
   print(pth)
   
-  r_in = fread(pth, header = TRUE, verbose = TRUE, drop = c(1,2,3,4,5,7), showProgress=TRUE)
+  # for 2013 data
+  #r_in = fread(pth, header = TRUE, verbose = TRUE, drop = c(1,2,3,4,5,7), showProgress=TRUE)
+  
+  #modifcations for 2015 data - works with yellow cab set
+  # note, header order moves around for yellow vs green files
+  # r_in = fread(pth, header = TRUE, verbose  = TRUE, 
+  #             select =   c('tpep_pickup_datetime', 'tpep_dropoff_datetime', 'passenger_count', 'trip_distance', 'pickup_longitude', 
+  #                          'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude'), 
+  #             showProgress=TRUE)
+  #names(r_in)[names(r_in) == "tpep_pickup_datetime"] = "pickup_datetime" 
+  #names(r_in)[names(r_in) == "tpep_dropoff_datetime"] = "dropoff_datetime" 
+  
+  # for green cab files
+  r_in = fread(pth, header = TRUE, verbose  = TRUE, 
+               select =   c('lpep_pickup_datetime', 'lpep_dropoff_datetime', 'passenger_count', 'trip_distance', 'pickup_longitude', 
+                            'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude'), 
+               showProgress=TRUE)
+  
+  names(r_in)[names(r_in) == "lpep_pickup_datetime"] = "pickup_datetime" 
+  names(r_in)[names(r_in) == "lpep_dropoff_datetime"] = "dropoff_datetime" 
+  
   
   r_in <- r_in[, passenger_count := as.factor(passenger_count)]
   
   l = r_in
-
-
   
   # invalid lat or long coords on row
   rm = as.logical(abs(scale(l[,pickup_latitude])) > 1.5 | abs(scale(l[,pickup_longitude])) > 1.5 | abs(scale(l[,dropoff_latitude])) > 1.5 | abs(scale(l[,dropoff_longitude])) > 1.5)
@@ -87,7 +107,7 @@ for (i in files_n_load){
   #plot(brok_shp)
   
   
-
+  
   # add simple boxes for manhattan>?
   
   
@@ -132,28 +152,28 @@ for (i in files_n_load){
   
   
   # par process over function
-
+  
   
   # par2
   ptm <- proc.time()
-    # prep par
-    l_len = dim(l)[1]
-    stepamnt = 1000000
-    ss = seq(1,l_len,stepamnt)
-    ss = append(ss, (l_len+1))
-    #do
-    x <- foreach(a=ss[1:(length(ss)-1)], b=ss[2:(length(ss))]-1, .packages='sp') %dopar% {
-     res = over(mapdata_do[a:b,], counties)[1]
-    }
-    s_do = unlist(x)
-    s_do = unname(s_do)
-    rm = is.na(s_do)
-    #pu
-    x <- foreach(a=ss[1:(length(ss)-1)], b=ss[2:(length(ss))]-1, .packages='sp') %dopar% {
-      res = over(mapdata_pu[a:b,], counties)[1]
-    }
-    s_pu = unlist(x)
-    s_pu = unname(s_pu)
+  # prep par
+  l_len = dim(l)[1]
+  stepamnt = 1000000
+  ss = seq(1,l_len,stepamnt)
+  ss = append(ss, (l_len+1))
+  #do
+  x <- foreach(a=ss[1:(length(ss)-1)], b=ss[2:(length(ss))]-1, .packages='sp') %dopar% {
+    res = over(mapdata_do[a:b,], counties)[1]
+  }
+  s_do = unlist(x)
+  s_do = unname(s_do)
+  rm = is.na(s_do)
+  #pu
+  x <- foreach(a=ss[1:(length(ss)-1)], b=ss[2:(length(ss))]-1, .packages='sp') %dopar% {
+    res = over(mapdata_pu[a:b,], counties)[1]
+  }
+  s_pu = unlist(x)
+  s_pu = unname(s_pu)
   proc.time() - ptm
   
   # verifyy parallel code returned in correct order
@@ -172,7 +192,7 @@ for (i in files_n_load){
   MM_li = l$pu_borough == 1 & l$do_borough == 1
   BB_li =  l$pu_borough == 3 & l$do_borough == 3
   BM_li =!MM_li & !BB_li
-   
+  
   #error check 
   #sum(MM_li) + sum(BB_li) + sum(BM_li)
   #dim(l)
@@ -180,23 +200,26 @@ for (i in files_n_load){
   MM_trips = l[MM_li]
   BB_trips = l[BB_li]
   BM_trips = l[BM_li]
-  
+  dim(MM_trips)
+  dim(BB_trips)
+  dim(BM_trips)
   
   # write out?
+  print('writing to sql')
+  flush.console()
   
-  
-  tn =  gsub(".csv", "",to_load[i])
+  tn =  gsub(".csv|-", "", to_load[i])
   fn= 'test_file_out.csv'
   drv <- dbDriver("SQLite")
-  con <- dbConnect(drv, dbname = "MM.db")
+  con <- dbConnect(drv, dbname = "MM2015.db")
   dbWriteTable(con, tn, MM_trips,overwrite=TRUE)
   dbDisconnect(con)
   
-  con <- dbConnect(drv, dbname = "BB2.db")
+  con <- dbConnect(drv, dbname = "BB2015.db")
   dbWriteTable(con, tn, BB_trips,overwrite=TRUE)
   dbDisconnect(con)
   
-  con <- dbConnect(drv, dbname = "BM.db")
+  con <- dbConnect(drv, dbname = "BM2015.db")
   dbWriteTable(con, tn, BM_trips,overwrite=TRUE)
   dbDisconnect(con)
   
@@ -225,8 +248,8 @@ for (i in files_n_load){
 #mapdata_var_plot<-data.frame(mapdata_var)
 
 #ggplot() + 
- # geom_polygon(data=counties, aes(x=long, y=lat, group=group)) + 
-  #geom_point(data=mapdata_var_plot, aes(x=longitude, y=latitude), color="red")
+# geom_polygon(data=counties, aes(x=long, y=lat, group=group)) + 
+#geom_point(data=mapdata_var_plot, aes(x=longitude, y=latitude), color="red")
 
 # most of above from: http://zevross.com/blog/2014/07/16/mapping-in-r-using-the-ggplot2-package/
 
