@@ -69,15 +69,33 @@ library(pracma)
 
 
 
-dat = as.matrix(BM[, c('pickup_longitude','pickup_latitude'), with=FALSE])
+bns = 20
+lo_range = sort(range(cbind(BM$pickup_longitude, BM$dropoff_longitude)))
+lo_range = lo_range + c(-(abs(lo_range[1]))* .001, abs(lo_range[2] * .001))
+la_range = sort(range(cbind(BM$pickup_latitude, BM$pickup_longitude)))
+la_range = la_range + c(-(abs(la_range[1]))* .001, abs(la_range[2] * .001))
 
-x <- c(1,1,1,5,5,10)
-y <- c(2,3,4,5,5,6)
-e <- seq(0, 12, by = 1)
-xx = histc(x,e) 
-yy = histc(y,e) 
+e_lo <- seq(lo_range[1],lo_range[2],length=bns)	
+e_la <- seq(la_range[1],la_range[2],length=bns)	
 
-t = apply(cbind(xx$bin, yy$bin),1, function(x) sprintf('%i_%i',x[1],x[2]))
+tic()
+pu_lolo = histc(BM$pickup_longitude,e_lo)$bin
+pu_lala = histc(BM$pickup_latitude,e_la)$bin 
+
+do_lolo = histc(BM$dropoff_longitude,e_lo)$bin
+do_lala = histc(BM$dropoff_latitude,e_la)$bin 
+
+BM$pu_id = as.factor(pu_lolo + (pu_lala / 100))
+BM$do_id = as.factor(do_lolo + (do_lala / 100))
+toc()
+
+
+
+
+bin_lbls = cbind(e_lo, e_la)
+
+
+
 
 
 # verify
