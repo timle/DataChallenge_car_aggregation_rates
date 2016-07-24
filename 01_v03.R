@@ -22,7 +22,7 @@ to_load = list.files(path = base_folder, pattern = '*.csv')
 # dat = fread(input, header = TRUE, verbose = TRUE, drop = c(1,2,3,4,5),showProgress=TRUE)
 
 files_n_load = 14:length(to_load)
-files_n_load = 1:12
+files_n_load = 2:12
 #files_n_load = 1:1
 
 counties<-readOGR("C:/Users/tsk/Downloads/nybb_16b/nybb.shp", layer="nybb")
@@ -63,12 +63,19 @@ for (i in files_n_load){
   
   # for green cab files
   r_in = fread(pth, header = TRUE, verbose  = TRUE, 
-               select =   c('lpep_pickup_datetime', 'lpep_dropoff_datetime', 'passenger_count', 'trip_distance', 'pickup_longitude', 
-                            'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude'), 
+               select =   c('lpep_pickup_datetime', 'Lpep_dropoff_datetime', 'Passenger_count', 'Trip_distance', 'Pickup_longitude', 
+                            'Pickup_latitude', 'Dropoff_longitude', 'Dropoff_latitude'), 
                showProgress=TRUE)
   
   names(r_in)[names(r_in) == "lpep_pickup_datetime"] = "pickup_datetime" 
-  names(r_in)[names(r_in) == "lpep_dropoff_datetime"] = "dropoff_datetime" 
+  names(r_in)[names(r_in) == "Lpep_dropoff_datetime"] = "dropoff_datetime" 
+  
+  names(r_in)[names(r_in) == "Pickup_longitude"] = "pickup_longitude"
+  names(r_in)[names(r_in) == "Pickup_latitude"] = "pickup_latitude"
+  names(r_in)[names(r_in) == "Dropoff_longitude"] = "dropoff_longitude"
+  names(r_in)[names(r_in) == "Dropoff_latitude"] = "dropoff_latitude"
+  names(r_in)[names(r_in) == "Passenger_count"] = "passenger_count"
+  names(r_in)[names(r_in) == "Trip_distance"] = "trip_distance"
   
   
   r_in <- r_in[, passenger_count := as.factor(passenger_count)]
@@ -91,7 +98,7 @@ for (i in files_n_load){
   
   # update datetimes, using fasttime library 
   l <- l[, pickup_datetime:=fastPOSIXct(pickup_datetime,'GMT')]
-  
+  # 
   
   
   #install.packages("maptools")
@@ -115,7 +122,7 @@ for (i in files_n_load){
   
   
   
-  
+  # should be updated to re-project shape file instead of lat longs, but this works for now
   # prep cord data
   mapdata_pu = data.frame(l$pickup_longitude, l$pickup_latitude)
   colnames(mapdata_pu) <- c("longitude", "latitude")
