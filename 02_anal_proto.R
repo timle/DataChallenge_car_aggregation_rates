@@ -1,10 +1,12 @@
 # load, first analysis
 library("RSQLite")
 library("data.table")
-library("fasttime")
+library(doParallel)
+library('lubridate')
 
 
 return_sql_as_dt <- function(drv, db_name){
+  library("fasttime")
   # given db driver and db name, returns data from sql table as DT
   con <- dbConnect(drv, dbname = db_name)
   # load and covert tables to r
@@ -30,84 +32,8 @@ return_sql_as_dt <- function(drv, db_name){
   return(a)
 }
 
-
-drv <- dbDriver("SQLite")
-
-# mnht 2 mnht trips, 2013
-dbname = "MM.db"
-
-# Brooklyn 2 Brooklyn trips, 2013
-dbname = "BB2.db"
-
-# Brooklyn 2 mnhtn trips, 2013
-db_name = "BM.db"
-
-
-# BM
-BM = return_sql_as_dt(drv,  "BM.db")
-
-# BB
-BB = return_sql_as_dt(drv,  "BB2.db")
-
-# MM
-MM = return_sql_as_dt(drv,  "MM.db")
-
-
-
-
-
-# binnings?
-
-
-
-
-
-
-library(ash)
-library(pracma)
-
-test = 
-BM$pickup_datetime[1]
-
-
-bns = 20
-lo_range = sort(range(cbind(BM$pickup_longitude, BM$dropoff_longitude)))
-lo_range = lo_range + c(-(abs(lo_range[1]))* .001, abs(lo_range[2] * .001))
-la_range = sort(range(cbind(BM$pickup_latitude, BM$dropoff_latitude)))
-la_range = la_range + c(-(abs(la_range[1]))* .001, abs(la_range[2] * .001))
-
-e_lo <- seq(lo_range[1],lo_range[2],length=bns)	
-e_la <- seq(la_range[1],la_range[2],length=bns)	
-
-tic()
-pu_lolo = histc(BM$pickup_longitude,e_lo)$bin
-pu_lala = histc(BM$pickup_latitude,e_la)$bin 
-
-do_lolo = histc(BM$dropoff_longitude,e_lo)$bin
-do_lala = histc(BM$dropoff_latitude,e_la)$bin 
-
-BM$pu_id = as.factor(pu_lolo + (pu_lala / 100))
-BM$do_id = as.factor(do_lolo + (do_lala / 100))
-toc()
-
-test = pu_lolo + (pu_lala / 100)
-unique(BM$pu_id)
-unique(BM$do_id)
-
-
-barplot(table(BM$do_id),horiz = TRUE)
-
-bin_lbls = cbind(e_lo, e_la)
-
-# distribution of pickup rides by location. 
-# 2d histo would be beter...
-#library('ggplot2')
-#c <- ggplot(BM, aes(do_id))
-#c + geom_bar()+ coord_flip()
-
-
-return_n_rides <- function(dt_in, min_cars = 0){
-  mytable <- xtabs(~do_id+pu_id, data=bm_ts)
+return_n_rides <- function(dt_in, min_cars){
+  mytable <- xtabs(~do_id+pu_id, data=dt_in)
   num_pu = colSums(mytable)
   num_do = rowSums(mytable)
   u_dos = apply(mytable, 1, function(x) sum(x>0))
@@ -128,28 +54,125 @@ return_n_rides <- function(dt_in, min_cars = 0){
   return(a)
 }
 
+drv <- dbDriver("SQLite")
+
+# mnht 2 mnht trips, 2013
+#dbname = "MM.db"
+# Brooklyn 2 Brooklyn trips, 2013
+#dbname = "BB2.db"
+# Brooklyn 2 mnhtn trips, 2013
+#db_name = "BM.db"
+
+# BM
+#BM = return_sql_as_dt(drv,  "BM.db")
+# BB
+#BB = return_sql_as_dt(drv,  "BB2.db")
+# MM
+#MM = return_sql_as_dt(drv,  "MM.db")
+
+library(ash)
+library(pracma)
 
 
-#set up win_starts
-# window 10 minutes, step 2 minutes
-# win
-p_min = min(BM$pickup_datetime)
-p_max = max(BM$pickup_datetime)
-datetime <- seq(p_min,p_max, by = "4 min") 
-del = minutes(10)
+cl <- makeCluster(4)
+registerDoParallel(cl)
 
-tic()
-datetime = datetime[1:100]
-a=vector()
-for (ii in 1:length(datetime)){
+# hard code bin ranges
+
+lo_range = c(-74.11558, -73.76037)
+la_range = c(40.53121, 40.91864)
+bns = 20
+e_lo <- seq(lo_range[1],lo_range[2],length=bns)	
+e_la <- seq(la_range[1],la_range[2],length=bns)	
+
+bin_lbls = cbind(e_lo, e_la)
+
+for (db_name in c("BM.db", "BB2.db", "MM.db","BB2015.db","BM2015.db","MM2015.db")){
   
-  li = BM$pickup_datetime > datetime[ii] & BM$pickup_datetime < (datetime[ii] + del)
-  bm_ts = BM[li]
+  dat = return_sql_as_dt(drv,  db_name)
   
-  res = return_n_rides(bm_ts)$sum
-  a[ii] = res
+  # hardcoded for consistency across sets
+  #  lo_range = sort(range(cbind(dat$pickup_longitude, dat$dropoff_longitude)))
+  #  lo_range = lo_range + c(-(abs(lo_range[1]))* .001, abs(lo_range[2] * .001))
+  #  la_range = sort(range(cbind(dat$pickup_latitude, dat$dropoff_latitude)))
+  #  la_range = la_range + c(-(abs(la_range[1]))* .001, abs(la_range[2] * .001))
+  
+  #e_lo <- seq(lo_range[1],lo_range[2],length=bns)	
+  #e_la <- seq(la_range[1],la_range[2],length=bns)	
+  
+  #tic()
+  pu_lolo = histc(dat$pickup_longitude,e_lo)$bin
+  pu_lala = histc(dat$pickup_latitude,e_la)$bin 
+  
+  do_lolo = histc(dat$dropoff_longitude,e_lo)$bin
+  do_lala = histc(dat$dropoff_latitude,e_la)$bin 
+  
+  dat$pu_id = as.factor(pu_lolo + (pu_lala / 100))
+  dat$do_id = as.factor(do_lolo + (do_lala / 100))
+  #toc()
+  
+  #test = pu_lolo + (pu_lala / 100)
+  #unique(BM$pu_id)
+  #unique(BM$do_id)
+  
+  #$barplot(table(BM$do_id),horiz = TRUE)
+  
+  # distribution of pickup rides by location. 
+  # 2d histo would be beter...
+  #library('ggplot2')
+  #c <- ggplot(BM, aes(do_id))
+  #c + geom_bar()+ coord_flip()
+  
+  #set up win_starts
+  # window 15 minutes, step 5
+  # win
+  p_min = min(dat$pickup_datetime)
+  p_max = max(dat$pickup_datetime)
+  datetime <- seq(p_min,p_max, by = "5 min") 
+  del = minutes(15)
+  
+  # this gets paralleld
+  
+  # par2
+  #datetime = datetime[1:1000]
+  
+  #do
+  tic()
+  
+  x <- foreach(ii = 1:length(datetime), .packages='data.table') %dopar% {
+    
+    subset1 = dat[dat$pickup_datetime > datetime[ii] & 
+                    dat$pickup_datetime < (datetime[ii] + del)]
+    print(ii)
+    a = return_n_rides(subset1,0)$sum_cars_same_do
+  }
+  
+  n_groupable_cars = (unlist(x))
+  
+  toc()
+  
+  
+  #tic()
+  #datetime = datetime[1:100]
+  #a=vector()
+  #for (ii in 1:length(datetime)){
+  #  
+  #  li = 
+  #  bm_ts = BM[li]
+  #  
+  #  res = return_n_rides(bm_ts)$sum
+  #  a[ii] = res
+  #}
+  #toc()
+  
+  out = data.table(datetime, n_groupable_cars)
+  # write to db
+  
+  tn =  gsub(".db", db_name)
+  con <- dbConnect(drv, dbname = "rates_out_v1.db")
+  dbWriteTable(con, tn, out, overwrite=TRUE)
+  dbDisconnect(con)
 }
-toc()
 
 
 
@@ -306,7 +329,7 @@ li = test = '4.05'
 # ab <- matrix( c(0,0,12,12), 2, 2) # interval [-5,5) x [-5,5)
 # bins <- bin2(cbind(x,y), ab, c(12,12)) # bin counts,ab,nskip
 
-      
+
 
 #x <- matrix( rnorm(200), 100 , 2) # bivariate normal n=100
 ab <- matrix( c(-5,-5,5,5), 2, 2) # interval [-5,5) x [-5,5)
