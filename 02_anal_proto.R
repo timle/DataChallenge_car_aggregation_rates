@@ -66,13 +66,14 @@ MM = return_sql_as_dt(drv,  "MM.db")
 library(ash)
 library(pracma)
 
-
+test = 
+BM$pickup_datetime[1]
 
 
 bns = 20
 lo_range = sort(range(cbind(BM$pickup_longitude, BM$dropoff_longitude)))
 lo_range = lo_range + c(-(abs(lo_range[1]))* .001, abs(lo_range[2] * .001))
-la_range = sort(range(cbind(BM$pickup_latitude, BM$pickup_longitude)))
+la_range = sort(range(cbind(BM$pickup_latitude, BM$dropoff_latitude)))
 la_range = la_range + c(-(abs(la_range[1]))* .001, abs(la_range[2] * .001))
 
 e_lo <- seq(lo_range[1],lo_range[2],length=bns)	
@@ -89,11 +90,157 @@ BM$pu_id = as.factor(pu_lolo + (pu_lala / 100))
 BM$do_id = as.factor(do_lolo + (do_lala / 100))
 toc()
 
+test = pu_lolo + (pu_lala / 100)
+unique(BM$pu_id)
+unique(BM$do_id)
 
 
+barplot(table(BM$do_id),horiz = TRUE)
 
 bin_lbls = cbind(e_lo, e_la)
 
+# distribution of pickup rides by location. 
+# 2d histo would be beter...
+#library('ggplot2')
+#c <- ggplot(BM, aes(do_id))
+#c + geom_bar()+ coord_flip()
+
+
+library(lubridate)
+
+datetime <- seq(min(BM$pickup_datetime), max(BM$pickup_datetime), by = "1 hour")    
+datetime2 <- seq(min(BM$pickup_datetime) + minutes(30), max(BM$pickup_datetime), by = "1 hour")    
+
+datetime[1:10]
+datetime2[1:10]
+
+# first hour of trips:
+del = minutes(15)
+li = BM$pickup_datetime > datetime[1] & BM$pickup_datetime < datetime[1] + del
+bm_ts = BM[li]
+
+mytable <- xtabs(~do_id+pu_id, data=bm_ts)
+num_pu = colSums(mytable)
+num_do = rowSums(mytable)
+u_dos = apply(mytable, 1, function(x) sum(x>0))
+# u_pus = apply(mytable, 2, function(x) sum(x>0))
+
+
+
+
+# this is counting regions with just one ride. 
+# will bias measure lower, wich is good, given 1 ride regions are not increasing efficiency
+
+num_with_same_do = (1.0 - (u_dos[num_do>0] / num_do[num_do>0])) * num_do[num_do>0]
+raw_num_do = num_do[num_do>0]
+uniq_do_areas = u_dos[num_do>0]
+raw_num_pu = num_pu[num_do>0]
+
+data.frame(raw_num_do, uniq_do_areas, num_with_same_do)
+
+
+
+
+
+mytable <- xtabs(~do_id+pu_id, data=BM)
+mytable =  mytable[order(rownames(mytable)),order(colnames(mytable))] 
+
+
+#normalized for total rides
+mytable2 <- sweep(mytable,2,colSums(mytable),`/`)
+
+# for each pickup location, what is max dropoff number:
+m = apply(mytable, 2, max)
+barplot(m)
+
+# for each pickup location, what is max dropoff number:
+m = apply(mytable2, 2, max)
+barplot(m)
+
+cli = colSums(mytable) > 10000
+m = apply(mytable2[,cli], 2, max)
+barplot(m)
+
+cli = colSums(mytable) > 10000
+m = apply(mytable2[,cli], 2, median)
+barplot(m[m>0])
+
+cli = colSums(mytable) > 10000
+m = apply(mytable2[,cli], 2, sd)
+barplot(m)
+
+
+dev.off()
+par(mfrow=c(4,1)) 
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, max)
+barplot(m,main = 'max')
+
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, median)
+barplot(m, main = 'median')
+
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, mean)
+barplot(m, main = 'sd')
+
+#cli = colSums(mytable) > 10000
+#m = apply(mytable2[,cli], 2, function(x) sum(x>(1/(99*99))) )
+#barplot(m, main = 'sd')
+
+dev.off()
+par(mfrow=c(4,1)) 
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, function(x) quantile(x,.95))
+barplot(m, main = 'sd')
+
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, function(x) quantile(x,.75))
+barplot(m, main = 'sd')
+
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, function(x) quantile(x,.4))
+barplot(m, main = 'sd')
+
+cli = colSums(mytable) > 100000
+m = apply(mytable2[,cli], 2, function(x) quantile(x,.05))
+barplot(m, main = 'sd')
+
+
+
+
+library(corrplot)
+rli = rowSums(mytable) > 10000
+cli = colSums(mytable) > 10000
+image(log(mytable[rli,cli]+1),col = heat.colors(100))
+
+image((mytable2[rli,cli]),col = heat.colors(100))
+
+
+# for each pickup location, what is max norm dropoff number:
+m = apply(mytable2, 2, max)
+cs = colSums(mytable)
+barplot(m[cs>1000])
+
+# for each pickup location, what is sd dropoff number:
+m = apply(mytable2, 2, sd)
+barplot(m)
+
+# median
+m = apply(mytable2, 2, median)
+barplot(m)
+
+#sum sanity check
+m = apply(mytable2, 2, sum)
+barplot(m)
+
+# need sanity check...
+
+
+BM_t[ , `:=`( COUNT = .N , IDX = 1:.N ) , by = VAL ]
+
+
+li = test = '4.05'
 
 
 
