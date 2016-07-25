@@ -106,7 +106,62 @@ bin_lbls = cbind(e_lo, e_la)
 #c + geom_bar()+ coord_flip()
 
 
-library(lubridate)
+return_n_rides <- function(dt_in, min_cars = 0){
+  mytable <- xtabs(~do_id+pu_id, data=bm_ts)
+  num_pu = colSums(mytable)
+  num_do = rowSums(mytable)
+  u_dos = apply(mytable, 1, function(x) sum(x>0))
+  # u_pus = apply(mytable, 2, function(x) sum(x>0))
+  
+  # this is counting regions with just one ride. 
+  # will bias measure lower, wich is good, given 1 ride regions are not increasing efficiency
+  # option to change is given by min_cars input
+  num_with_same_do = (1.0 - (u_dos[num_do>min_cars] / num_do[num_do>min_cars])) * num_do[num_do>min_cars]
+  raw_num_do = num_do[num_do>min_cars]
+  uniq_do_areas = u_dos[num_do>min_cars]
+  raw_num_pu = num_pu[num_do>min_cars]
+  
+  a = list(sum_cars_same_do = sum(num_with_same_do),
+           raw_num_do = raw_num_do, 
+           uniq_do_areas = uniq_do_areas, 
+           num_with_same_do = num_with_same_do)
+  return(a)
+}
+
+
+
+#set up win_starts
+# window 10 minutes, step 2 minutes
+# win
+p_min = min(BM$pickup_datetime)
+p_max = max(BM$pickup_datetime)
+datetime <- seq(p_min,p_max, by = "4 min") 
+del = minutes(10)
+
+tic()
+datetime = datetime[1:100]
+a=vector()
+for (ii in 1:length(datetime)){
+  
+  li = BM$pickup_datetime > datetime[ii] & BM$pickup_datetime < (datetime[ii] + del)
+  bm_ts = BM[li]
+  
+  res = return_n_rides(bm_ts)$sum
+  a[ii] = res
+}
+toc()
+
+
+
+li = BM$pickup_datetime > datetime[1] & BM$pickup_datetime < datetime[1] + del
+bm_ts = BM[li]
+
+res = return_n_rides(bm_ts)$sum
+
+
+
+
+
 
 datetime <- seq(min(BM$pickup_datetime), max(BM$pickup_datetime), by = "1 hour")    
 datetime2 <- seq(min(BM$pickup_datetime) + minutes(30), max(BM$pickup_datetime), by = "1 hour")    
@@ -114,18 +169,20 @@ datetime2 <- seq(min(BM$pickup_datetime) + minutes(30), max(BM$pickup_datetime),
 datetime[1:10]
 datetime2[1:10]
 
+
 # first hour of trips:
 del = minutes(15)
 li = BM$pickup_datetime > datetime[1] & BM$pickup_datetime < datetime[1] + del
 bm_ts = BM[li]
+
+res = return_n_rides(bm_ts)$sum
+
 
 mytable <- xtabs(~do_id+pu_id, data=bm_ts)
 num_pu = colSums(mytable)
 num_do = rowSums(mytable)
 u_dos = apply(mytable, 1, function(x) sum(x>0))
 # u_pus = apply(mytable, 2, function(x) sum(x>0))
-
-
 
 
 # this is counting regions with just one ride. 
