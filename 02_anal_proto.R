@@ -6,7 +6,6 @@ library('lubridate')
 library("fasttime")
 
 return_sql_as_dt <- function(drv, db_name){
-  library("fasttime")
   # given db driver and db name, returns data from sql table as DT
   con <- dbConnect(drv, dbname = db_name)
   # load and covert tables to r
@@ -23,22 +22,23 @@ return_sql_as_dt <- function(drv, db_name){
     #subset  
     tbl_list = tbl_list[c(TRUE,FALSE)]
   }
-  
+
   a = data.table()
   for (lbl in tbl_list){
     print(lbl)
     r = data.table(dbGetQuery(con,paste('select * from',lbl) ))
+    r$pickup_datetime = as.POSIXct(r$pickup_datetime, origin="1970-01-01") # these could all be done in place, to re-optomize
+    r$passenger_count = as.factor(r$passenger_count)
+    r$pu_borough = as.factor(r$pu_borough)
+    r$do_borough = as.factor(r$do_borough)
     a = rbind(a, r)
   }
   # conversions back into r
   # date
-  a$pickup_datetime = as.POSIXct(a$pickup_datetime, origin="1970-01-01")
   #check for dropoff_datetime...
   # convert if present
   # factors
-  a$passenger_count = as.factor(a$passenger_count)
-  a$pu_borough = as.factor(a$pu_borough)
-  a$do_borough = as.factor(a$do_borough)
+
   dbDisconnect(con)
   return(a)
 }
