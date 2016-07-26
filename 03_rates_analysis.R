@@ -9,13 +9,33 @@ library('ggplot2')
 library(scales)
 
 
-tp = data.frame(lbl = c('BB_2013','BB_2015','BM_2013','BM_2015'),
-                db_name = c("BB2","BB2015","BM","BM2015"))
+tp = data.frame(lbl = c('BB_2013','BB_2015','BM_2013','BM_2015','MM2013'),
+                db_name = c("BB2","BB2015","BM","BM2015",'MM'))
 
 
 for (r in 1:dim(tp)[1]){
+#for (r in dim(tp)[1]){
   r = tp[r,]
   plt_months(r$lbl, r$db_name)
+}
+
+
+
+
+#for (r in 1:dim(tp)[1]){
+for (r in dim(tp)[1]){
+  r = tp[r,]
+  
+  to_all = list(wkd_lim = c(0,24), 
+                sa_lim = c(0,24), 
+                su_lim = c(0,24))
+  
+  to_via = list(wkd_lim = c(6,24), 
+                sa_lim = c(10,24), 
+                su_lim = c(10,21))
+  
+   n_cars(r$lbl, r$db_name, TRUE, to_all)
+   n_cars(r$lbl, r$db_name, TRUE, to_via)
 }
 
 
@@ -74,6 +94,10 @@ n_cars <- function(data_lbl, db_name, do_plot, to){
   rate_dat$hour = hour(rate_dat$datetime) # 
   rate_dat$minute = minute(rate_dat$datetime) 
   
+  m = rate_dat$month_id
+  h = m == 1 | m == 3 | m == 5 | m == 7 | m == 9 | m == 11
+  rate_dat = rate_dat[h,]
+  
   subs = rate_dat[c(TRUE,FALSE,FALSE),]
   
   is_sat = subs$weekdays == "Sat"
@@ -127,7 +151,7 @@ n_cars <- function(data_lbl, db_name, do_plot, to){
       theme(text = element_text(size=20),
             axis.text.x = element_text(angle = 45, hjust = 1)) +
       ggtitle(sprintf('%s - n Similiar Rides\nbetween %s',data_lbl,lim_txt)) + 
-      coord_cartesian(ylim = c(0, 20000)) + 
+      coord_cartesian(ylim = c(0, 500000)) + 
       xlab('Day x Month') + 
       ylab('n Similiar Rides')
     
@@ -141,6 +165,8 @@ n_cars <- function(data_lbl, db_name, do_plot, to){
   return(n_out)
 }
 
+data_lbl = 'MM2013'
+db_name = 'MM'
 
 plt_months <- function(data_lbl, db_name){
 
