@@ -398,3 +398,12 @@ BB[1:10]
 
 # distances between all points. how fast is it?
 # http://www.inside-r.org/packages/cran/raster/docs/pointDistance
+
+
+# plotting map
+counties<-readOGR("nybb_16b/nybb.shp", layer="nybb")
+counties = counties[counties$BoroName == 'Brooklyn' | counties$BoroName == 'Manhattan',]
+map_wgs84 <- spTransform(counties, CRS("+proj=longlat +datum=WGS84"))
+# plot(map_wgs84, axes=TRUE
+plot(map_wgs84, axes=TRUE)
+
