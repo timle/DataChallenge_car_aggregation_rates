@@ -25,7 +25,7 @@ files_n_load = 14:length(to_load)
 files_n_load = 2:12
 #files_n_load = 1:1
 
-counties<-readOGR("C:/Users/tsk/Downloads/nybb_16b/nybb.shp", layer="nybb")
+counties<-readOGR("nybb_16b/nybb.shp", layer="nybb")
 counties = counties[counties$BoroName == 'Brooklyn' | counties$BoroName == 'Manhattan',]
 
 
@@ -33,7 +33,7 @@ library("rgdal")
 library("rgeos")
 
 map<-readOGR("test_shp", layer="nybb")
-plot(map, axes=TRUE)
+
 summary(map)
 
 
