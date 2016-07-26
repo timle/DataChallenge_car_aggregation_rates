@@ -59,3 +59,6 @@ rstudio__via_dd.Rproj
 *.ai
 rates_out_v1.db.old1
 *.zip
+*.docx
+report/Write up.pdf
+*.pdf
