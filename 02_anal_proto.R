@@ -3,36 +3,49 @@ library("RSQLite")
 library("data.table")
 library(doParallel)
 library('lubridate')
-
+library("fasttime")
 
 return_sql_as_dt <- function(drv, db_name){
-  library("fasttime")
   # given db driver and db name, returns data from sql table as DT
   con <- dbConnect(drv, dbname = db_name)
   # load and covert tables to r
   alltables = dbListTables(con)
   # load and merge all tables
   tbl_list = alltables
+  
+  # hard coded subsets for MM data. hack until mem opto code written
+  if (strcmp(db_name, "MM.db")){
+    #subset  
+    tbl_list = c("trip_data_1",  "trip_data_3" , "trip_data_5" , "trip_data_7", "trip_data_9","trip_data_11") 
+  }
+  if (strcmp(db_name, "MM2015.db")){
+    #subset  
+    tbl_list = tbl_list[c(TRUE,FALSE)]
+  }
+
   a = data.table()
   for (lbl in tbl_list){
     print(lbl)
     r = data.table(dbGetQuery(con,paste('select * from',lbl) ))
+    r$pickup_datetime = as.POSIXct(r$pickup_datetime, origin="1970-01-01") # these could all be done in place, to re-optomize
+    r$passenger_count = as.factor(r$passenger_count)
+    r$pu_borough = as.factor(r$pu_borough)
+    r$do_borough = as.factor(r$do_borough)
     a = rbind(a, r)
   }
   # conversions back into r
   # date
-  a$pickup_datetime = as.POSIXct(a$pickup_datetime, origin="1970-01-01")
   #check for dropoff_datetime...
   # convert if present
   # factors
-  a$passenger_count = as.factor(a$passenger_count)
-  a$pu_borough = as.factor(a$pu_borough)
-  a$do_borough = as.factor(a$do_borough)
+
   dbDisconnect(con)
   return(a)
 }
 
-return_n_rides <- function(dt_in, min_cars){
+
+return_n_rides <- function(dt_in){
+  min_cars = 0
   mytable <- xtabs(~do_id+pu_id, data=dt_in)
   num_pu = colSums(mytable)
   num_do = rowSums(mytable)
@@ -87,9 +100,26 @@ e_la <- seq(la_range[1],la_range[2],length=bns)
 
 bin_lbls = cbind(e_lo, e_la)
 
-for (db_name in c("BM.db", "BB2.db", "MM.db","BB2015.db","BM2015.db","MM2015.db")){
-  
-  dat = return_sql_as_dt(drv,  db_name)
+
+
+
+#for (db_name in c("BM.db", "BB2.db", "BB2015.db","BM2015.db", "MM.db","MM2015.db")){
+for (db_name in c("MM.db","MM2015.db")){
+    
+  # if MM than special routine - memory hack
+  #if (regexpr('MM', db_name)){
+  #  dat1 = return_sql_as_dt2(drv,  db_name, 1:3)
+  #  dat2 = return_sql_as_dt2(drv,  db_name, 4:6)
+  ##  dat3 = return_sql_as_dt2(drv,  db_name, 7:9)
+  #  dat4 = return_sql_as_dt2(drv,  db_name, 10:12)
+  #  dat = cbind(dat1,dat2,dat3,dat4)
+  #  remove(dat1)
+  #  remove(dat2)
+  #  remove(dat3)
+  #  remove(dat4)
+  #} else {
+    dat = return_sql_as_dt(drv,  db_name)
+  #}
   
   # hardcoded for consistency across sets
   #  lo_range = sort(range(cbind(dat$pickup_longitude, dat$dropoff_longitude)))
@@ -137,19 +167,18 @@ for (db_name in c("BM.db", "BB2.db", "MM.db","BB2015.db","BM2015.db","MM2015.db"
   #datetime = datetime[1:1000]
   
   #do
-  tic()
+  #tic()
   
-  x <- foreach(ii = 1:length(datetime), .packages='data.table') %dopar% {
+  x <- foreach(ii = 1:length(datetime), .packages=c('data.table','lubridate')) %dopar% {
     
     subset1 = dat[dat$pickup_datetime > datetime[ii] & 
                     dat$pickup_datetime < (datetime[ii] + del)]
-    print(ii)
-    a = return_n_rides(subset1,0)$sum_cars_same_do
+    a = return_n_rides(subset1)$sum_cars_same_do
   }
   
   n_groupable_cars = (unlist(x))
   
-  toc()
+  #toc()
   
   
   #tic()
@@ -168,7 +197,7 @@ for (db_name in c("BM.db", "BB2.db", "MM.db","BB2015.db","BM2015.db","MM2015.db"
   out = data.table(datetime, n_groupable_cars)
   # write to db
   
-  tn =  gsub(".db", db_name)
+  tn =  gsub(".db","", db_name)
   con <- dbConnect(drv, dbname = "rates_out_v1.db")
   dbWriteTable(con, tn, out, overwrite=TRUE)
   dbDisconnect(con)
