@@ -17,5 +17,6 @@ Using custom metric, identifies number of rides that could have been shared, giv
 ## 03_rates_analysis.R
 Given results from 02_predict_rides, generates plots and summary statistics for reporting. 
 
-
+## nybb_16b/
+Contains shape files used for identifying NYC borough boundaries.
 
